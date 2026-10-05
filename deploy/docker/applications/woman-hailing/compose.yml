@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 the VSS application contributors
+# SPDX-License-Identifier: Apache-2.0
+include:
+  - path:
+      - ../../compose.yml
+      - ./runtime.yml

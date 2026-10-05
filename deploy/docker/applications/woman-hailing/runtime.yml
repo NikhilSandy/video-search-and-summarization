@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 the VSS application contributors
+# SPDX-License-Identifier: Apache-2.0
+services:
+  nvstreamer-alerts:
+    ports:
+      - "31554:31554"
+  # Use the reachable host address on daemons that reject host-gateway.
+  vss-ui:
+    extra_hosts: !override
+      - "host.docker.internal:${HOST_IP}"
+  rtvi-vlm:
+    extra_hosts: !override
+      - "host.docker.internal:${HOST_IP}"
+  streamprocessing-ms:
+    volumes:
+      - ${BUILD_DIR}/vios/vst_config.json:/home/vst/vst_release/configs/vst_config.json:ro

@@ -34,6 +34,7 @@ def _make_pipeline():
     pipeline = object.__new__(VlmPipeline)
     pipeline._args = SimpleNamespace(num_gpus=1)
     pipeline._decoder_procs = [MagicMock()]
+    pipeline._vlm_procs = []
     pipeline._live_stream_id_map = {}
     pipeline._live_stream_lock = Lock()
     return pipeline
@@ -419,6 +420,23 @@ def test_add_live_stream_rejects_mismatched_decode_settings_for_same_asset():
     assert [call.args[0] for call in pipeline._decoder_procs[0].send_command.call_args_list] == [
         "start-live-stream"
     ]
+
+
+@pytest.mark.no_gpu
+def test_add_live_stream_rejects_mismatched_overlap_for_same_asset():
+    pipeline = _make_pipeline()
+    asset_id = str(uuid.uuid4())
+    asset = _make_asset(asset_id)
+    first = _make_query(asset_id, "Describe a fall.", chunk_duration=4).model_copy(
+        update={"chunk_overlap_duration": 0}
+    )
+    pipeline.add_live_stream(asset, first, MagicMock(), request_id="first")
+    second = first.model_copy(update={"chunk_overlap_duration": 2})
+    with pytest.raises(ServiceException) as error:
+        pipeline.add_live_stream(asset, second, MagicMock(), request_id="second")
+    assert error.value.status_code == 400
+    assert set(pipeline._live_stream_id_map[asset_id].subscribers) == {"first"}
+    assert pipeline._decoder_procs[0].send_command.call_count == 1
 
 
 @pytest.mark.no_gpu

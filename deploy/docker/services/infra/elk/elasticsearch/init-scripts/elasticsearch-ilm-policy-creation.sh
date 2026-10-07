@@ -28,6 +28,8 @@ ELASTICSEARCH_URL="${ELASTICSEARCH_URL:-${ES_URL:-http://elasticsearch:9200}}"
 
 # ILM policy retention period (default: 4h)
 ELASTICSEARCH_ILM_MIN_AGE="${ELASTICSEARCH_ILM_MIN_AGE:-4h}"
+# Allow verified alert incidents to outlive transient perception data.
+ELASTICSEARCH_VLM_INCIDENTS_ILM_MIN_AGE="${ELASTICSEARCH_VLM_INCIDENTS_ILM_MIN_AGE:-${ELASTICSEARCH_ILM_MIN_AGE}}"
 ELASTICSEARCH_ILM_CREATE_MAX_ATTEMPTS="${ELASTICSEARCH_ILM_CREATE_MAX_ATTEMPTS:-12}"
 ELASTICSEARCH_ILM_CREATE_RETRY_INTERVAL="${ELASTICSEARCH_ILM_CREATE_RETRY_INTERVAL:-10}"
 
@@ -59,7 +61,7 @@ create_ilm_policy() {
 create_ilm_policies(){
     echo "Creating ILM policies for indices."
 
-    # Create all ILM policies using the configured min_age
+    # VLM incidents can use a separate retention period; other policies use the global value.
     create_ilm_policy 'mdx-behavior-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
     create_ilm_policy 'mdx-raw-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
     create_ilm_policy 'mdx-frames-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
@@ -73,7 +75,7 @@ create_ilm_policies(){
     create_ilm_policy 'mdx-space-utilization-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
     create_ilm_policy 'mdx-vlm-alerts-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
     create_ilm_policy 'mdx-incidents-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
-    create_ilm_policy 'mdx-vlm-incidents-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
+    create_ilm_policy 'mdx-vlm-incidents-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_VLM_INCIDENTS_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
     create_ilm_policy 'mdx-embed-filtered-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
     create_ilm_policy 'mdx-compressed-embeddings-ilm-policy' "{\"policy\":{\"phases\":{\"delete\":{\"min_age\":\"${ELASTICSEARCH_ILM_MIN_AGE}\",\"actions\":{\"delete\":{}}}}}}"
 

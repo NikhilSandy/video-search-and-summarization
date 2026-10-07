@@ -127,6 +127,14 @@ PACKAGES=(
     libmysofa1
 
     # Runtime dependencies
+    # libavdevice is linked into ffprobe even when only video metadata is read.
+    libjack-jackd2-0
+    libxcb-shape0
+    libcdio19t64
+    libcdio-paranoia2t64
+    libcdio-cdda2t64
+    libxv1
+    libslang2
     libopenblas0-serial
     libblas3
     liblapack3

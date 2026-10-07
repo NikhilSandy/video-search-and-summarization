@@ -16,8 +16,13 @@
 
 import asyncio
 import concurrent.futures
+import json
 import os
+import shutil
+import subprocess
 from dataclasses import dataclass
+from fractions import Fraction
+from urllib.parse import quote, urlsplit, urlunsplit
 
 import gi
 from pymediainfo import MediaInfo
@@ -142,7 +147,9 @@ class MediaFileInfo:
                     getattr(track, "frame_rate", None)
                     or getattr(track, "original_frame_rate", None)
                 )
-                media_file_info.video_frame_count = _to_int(getattr(track, "frame_count", None))
+                media_file_info.video_frame_count = _to_int(
+                    getattr(track, "frame_count", None)
+                )
                 media_file_info.video_resolution = (
                     _to_int(getattr(track, "width", 0)),
                     _to_int(getattr(track, "height", 0)),
@@ -167,12 +174,92 @@ class MediaFileInfo:
     @staticmethod
     def get_info(uri_or_file: str, username="", password=""):
         if str(uri_or_file).startswith("rtsp://"):
+            if os.environ.get("RTVI_RTSP_PROBE_BACKEND") == "ffprobe":
+                return MediaFileInfo._get_info_rtsp_ffprobe(
+                    str(uri_or_file), username, password
+                )
             return MediaFileInfo._get_info_gst(uri_or_file, username, password)
         else:
             return MediaFileInfo._get_info_mediainfo(str(uri_or_file))
 
     @staticmethod
+    def _get_info_rtsp_ffprobe(uri: str, username="", password=""):
+        """Probe RTSP metadata with a bounded TCP reader, without GPU decoding.
+
+        Opt-in alternative for hardware-backed Gst discovery that can block
+        before a live stream is admitted. Preserve credentials without logging
+        subprocess stderr, which can echo authenticated source URLs.
+        """
+        binary = shutil.which("ffprobe")
+        codec_binary = "/opt/nvidia/rtvi/codecs/usr/bin/ffprobe"
+        if not binary and os.access(codec_binary, os.X_OK):
+            binary = codec_binary
+        if not binary:
+            raise ValueError("FFprobe is required for RTVI_RTSP_PROBE_BACKEND=ffprobe")
+        if username and password:
+            parts = urlsplit(uri)
+            if parts.username is not None:
+                raise ValueError("RTSP credentials must be provided once")
+            auth = quote(username, safe="") + ":" + quote(password, safe="") + "@"
+            uri = urlunsplit(parts._replace(netloc=auth + parts.netloc))
+        try:
+            result = subprocess.run(
+                [
+                    binary,
+                    "-v",
+                    "error",
+                    "-rtsp_transport",
+                    "tcp",
+                    "-timeout",
+                    "8000000",
+                    "-analyzeduration",
+                    "1000000",
+                    "-probesize",
+                    "1000000",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=codec_name,width,height,r_frame_rate,avg_frame_rate",
+                    "-of",
+                    "json",
+                    uri,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=12,
+            )
+            streams = json.loads(result.stdout).get("streams", [])
+            if len(streams) != 1:
+                raise ValueError("RTSP source must expose a video stream")
+            stream = streams[0]
+            width, height = int(stream["width"]), int(stream["height"])
+            if width <= 0 or height <= 0 or not stream.get("codec_name"):
+                raise ValueError("RTSP source has incomplete video metadata")
+            fps = 0.0
+            for key in ("r_frame_rate", "avg_frame_rate"):
+                try:
+                    fps = float(Fraction(stream.get(key, "0/1")))
+                except (ValueError, ZeroDivisionError):
+                    continue
+                if fps > 0:
+                    break
+            return MediaFileInfo(
+                video_codec=stream["codec_name"],
+                video_fps=fps,
+                video_resolution=(width, height),
+            )
+        except (subprocess.SubprocessError, json.JSONDecodeError, KeyError, TypeError):
+            raise ValueError(
+                "Could not probe the RTSP video stream with FFprobe"
+            ) from None
+
+    @staticmethod
     async def get_info_async(uri_or_file: str, username="", password=""):
         return await asyncio.get_event_loop().run_in_executor(
-            _media_info_executor, MediaFileInfo.get_info, uri_or_file, username, password
+            _media_info_executor,
+            MediaFileInfo.get_info,
+            uri_or_file,
+            username,
+            password,
         )

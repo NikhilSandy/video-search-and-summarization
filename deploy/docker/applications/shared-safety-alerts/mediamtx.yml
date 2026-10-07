@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 the VSS application contributors
+# SPDX-License-Identifier: Apache-2.0
+logLevel: info
+rtspAddress: :8554
+rtspTransports: [tcp]
+rtmp: false
+hls: false
+webrtc: false
+srt: false
+moq: false
+api: true
+apiAddress: 127.0.0.1:9997
+# No runOnInit/runOnDemand hooks or restart commands: EOF stays EOF.
+paths:
+  person_collapsing:
+    source: publisher
+  woman_hailing:
+    source: publisher

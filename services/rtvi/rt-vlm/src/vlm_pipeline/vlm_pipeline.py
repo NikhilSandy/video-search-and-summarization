@@ -1119,7 +1119,7 @@ class DecoderProcess(ProcessBase):
         fgetter.stream(
             live_stream_url=asset.path,
             chunk_duration=vlm_query.chunk_duration,
-            chunk_overlap_duration=0,
+            chunk_overlap_duration=vlm_query.chunk_overlap_duration,
             username=asset.username,
             password=asset.password,
             live_stream_id=asset.asset_id,
@@ -2585,6 +2585,7 @@ class VlmPipeline:
     def _live_stream_decode_signature(self, vlm_query: VlmQuery) -> tuple:
         return (
             int(vlm_query.chunk_duration or 0),
+            int(vlm_query.chunk_overlap_duration or 0),
             float(vlm_query.num_frames_per_second_or_fixed_frames_chunk or 0),
             bool(vlm_query.use_fps_for_chunking or False),
             int(vlm_query.vlm_input_width or 0),
@@ -2620,7 +2621,7 @@ class VlmPipeline:
                     raise ServiceException(
                         "Live stream already has caption request(s) with different "
                         "decode settings. Stop the active request(s) before changing "
-                        "chunk duration, frame sampling, input size, or audio settings.",
+                        "chunk duration, overlap, frame sampling, input size, or audio settings.",
                         "BadParameters",
                         400,
                     )

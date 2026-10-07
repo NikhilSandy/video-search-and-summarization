@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 the VSS application contributors
+# SPDX-License-Identifier: Apache-2.0
+logLevel: info
+rtspAddress: :8554
+rtspTransports: [udp, tcp]
+rtmp: false
+hls: false
+webrtc: false
+srt: false
+moq: false
+api: true
+apiAddress: 127.0.0.1:9997
+paths:
+  camera_health:
+    source: publisher

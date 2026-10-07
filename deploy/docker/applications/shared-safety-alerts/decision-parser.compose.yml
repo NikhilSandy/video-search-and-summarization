@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 the VSS application contributors
+# SPDX-License-Identifier: Apache-2.0
+# Merge with the current deployment configuration to load the explicit-decision
+# parser. Scene-specific detection rules remain in each application's prompt.
+services:
+  rtvi-vlm:
+    volumes:
+      - type: bind
+        source: "${VSS_COLLAPSE_SOURCE_ROOT:?Set this to the repository root}/services/rtvi/rt-vlm/src/server/rtvi_stream_handler.py"
+        target: /opt/nvidia/rtvi/rtvi/server/rtvi_stream_handler.py
+        read_only: true
+        bind:
+          create_host_path: false

@@ -64,6 +64,19 @@ REASONING_DESCRIPTION_INFO_KEY = "reasoningDescription"
 DEFAULT_LIVE_STREAM_GPU_MEMORY_HEADROOM_MB = 1024
 
 
+def _alert_trigger_tokens(response: str, response_format=None) -> list[str]:
+    """Read the explicit decision when a rule requests cues plus Yes/No JSON."""
+    schema_definition = getattr(response_format, "json_schema", None)
+    schema = getattr(schema_definition, "schema_", {}) or {}
+    if "decision" in schema.get("properties", {}):
+        data = json.loads(response)
+        if not isinstance(data, dict) or data.get("decision") not in ("Yes", "No"):
+            raise ValueError("Expected an explicit decision of Yes or No")
+        return ["yes"] if data["decision"] == "Yes" else []
+    lower_response = response.lower()
+    return [token for token in ("yes", "true") if token in lower_response]
+
+
 def _add_reasoning_to_info(info: MutableMapping[str, str], reasoning: str) -> None:
     if not reasoning:
         return
@@ -2162,8 +2175,18 @@ class RTVIStreamHandler:
         if chunk_result.vlm_model_output and chunk_result.vlm_model_output.output:
             # string response = 4;
             query_msg.response = chunk_result.vlm_model_output.output
-            lower_response = chunk_result.vlm_model_output.output.lower()
-            trigger_tokens = [token for token in ("yes", "true") if token in lower_response]
+            try:
+                trigger_tokens = _alert_trigger_tokens(
+                    query_msg.response,
+                    req_info.query.response_format if req_info.query else None,
+                )
+            except ValueError as exc:
+                trigger_tokens = []
+                vision_llm.info["responseFormatError"] = str(exc)
+                logger.warning(
+                    "Invalid alert decision for request %s, chunk %s: %s",
+                    req_info.request_id, chunk.chunkIdx, exc,
+                )
             triggered = bool(trigger_tokens)
             if triggered:
                 incident = self._build_incident_message(

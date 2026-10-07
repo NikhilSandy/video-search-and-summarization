@@ -1,0 +1,51 @@
+{
+  "application_id": "accident_detection",
+  "name": "Traffic Accident Detection",
+  "alert_type": "traffic_accident",
+  "params": {
+    "system_prompt": "Classify traffic accidents using only visible evidence. Return the requested JSON.",
+    "prompt": "Answer Yes when the video clearly shows a traffic accident or its aftermath, including a vehicle collision, rollover, rider crash, or visibly crashed vehicles and fallen riders.\n\nAnswer No for normal traffic, near misses, or unclear evidence. Describe only what is visible.\n\nReturn JSON with two brief \"visual_cues\" and \"decision\" set to \"Yes\" or \"No\".",
+    "chunk_duration": 8,
+    "chunk_overlap_duration": 2,
+    "num_frames_per_second_or_fixed_frames_chunk": 4,
+    "use_fps_for_chunking": true,
+    "vlm_input_width": 960,
+    "vlm_input_height": 540,
+    "enable_reasoning": false,
+    "max_tokens": 220,
+    "temperature": 0.0,
+    "enable_audio": false,
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "alert_visual_cues_decision_v1",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "properties": {
+            "visual_cues": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "decision": {
+              "type": "string",
+              "enum": [
+                "Yes",
+                "No"
+              ]
+            }
+          },
+          "required": [
+            "visual_cues",
+            "decision"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}
